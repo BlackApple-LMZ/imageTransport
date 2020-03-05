@@ -74,8 +74,7 @@ int main(int argc, char *argv[])
                 read_length -= receive;
                 finished += receive;
             }
-            read_length = recv(new_server_socket, file_buffer + finished, 1000, 0);
-     
+            read_length = recv(new_server_socket, file_buffer + finished, read_length, 0);
             std::vector<uchar> decode(file_buffer, file_buffer+image_length);
         
 		    Mat image = imdecode(decode, CV_LOAD_IMAGE_COLOR); //image decode

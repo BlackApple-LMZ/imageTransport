@@ -29,16 +29,7 @@ using  namespace std;
 #define BUFFER_SIZE 1024
 
 int client_socket;
-void imageCallback(const sensor_msgs::ImageConstPtr& msg)
-{
-    Mat s_img;
-    try{
-        s_img = cv_bridge::toCvShare(msg, "bgr8")->image;
-    }
-    catch (cv_bridge::Exception& e){
-        ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
-    }
-    
+void sendImage(const Mat& s_img){
     /********************* send image to serve ****************************/
     auto start = std::chrono::system_clock::now();
     
@@ -83,13 +74,22 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << elapsed.count() <<"ms" << '\n';
 }
+void imageCallback(const sensor_msgs::ImageConstPtr& msg)
+{
+    try{
+        Mat s_img = cv_bridge::toCvShare(msg, "bgr8")->image;
+        sendImage(s_img);
+    }
+    catch (cv_bridge::Exception& e){
+        ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
+    }
+}
 
 int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "img_listener");
     ros::NodeHandle nh;
     
-    cv::startWindowThread();
     image_transport::ImageTransport it(nh);
     image_transport::Subscriber sub = it.subscribe("/usb_cam/image_raw", 1, imageCallback);
 
@@ -148,8 +148,35 @@ int main(int argc, char *argv[])
         printf("send error\n");
     printf("send success\n");
     
-    ros::spin();
-
+    //ros::spin(); //from ros topic
+    
+    //from USB camera
+    VideoCapture capture(2); //0 with default camera 2 with USB
+    if (capture.isOpened()){
+        cout<<"camera open!!!"<<endl;
+    }
+    for(;;)
+    {
+        Mat frame; 
+        capture>>frame; 
+        if (!frame.empty()) {
+            imshow("edges", frame); 
+            sendImage(frame);
+        }
+        else
+        {
+            cout<<"can not get"<<endl;
+        }
+        char c = waitKey(30);
+	    switch(c){
+	        case 'q':
+	            return 0;
+	            break;
+	        default:
+	            break;
+	    }
+ 
+    }
     close(client_socket);
     printf("close socket\n");
     return 0;
